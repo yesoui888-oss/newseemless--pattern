@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎨 パターンメーカー</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Helvetica Neue',Arial,sans-serif; background:#f0faf7; height:100vh; display:flex; overflow:hidden; }
+
+/* PANEL */
+#panel { width:284px; min-width:240px; background:#fff; border-right:1px solid #d4ede7; display:flex; flex-direction:column; overflow:hidden; flex-shrink:0; }
+
+/* Header */
+.panel-header { padding:12px 15px 9px; border-bottom:1px solid #d4ede7; background:linear-gradient(135deg,#e4f9f2,#f5fdfb); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.panel-header h1 { font-size:13px; font-weight:700; color:#2e9e82; }
+.panel-header p  { font-size:10px; color:#5a8a7a; margin-top:1px; }
+#undoBtn { display:flex; align-items:center; gap:4px; padding:6px 10px; border-radius:8px; border:1.5px solid #d4ede7; background:#f5f5f5; color:#bbb; cursor:not-allowed; font-size:12px; font-weight:700; transition:all .15s; flex-shrink:0; }
+#undoBtn.active { border-color:#5ecfb0; background:#edfaf5; color:#2e9e82; cursor:pointer; }
+
+/* Tabs */
+.tabs { display:flex; border-bottom:1px solid #d4ede7; background:#fafffe; flex-shrink:0; }
+.tab { flex:1; padding:7px 4px; border:none; border-bottom:2px solid transparent; background:transparent; cursor:pointer; font-size:11px; font-weight:400; color:#888; transition:all .15s; }
+.tab.active { border-bottom-color:#5ecfb0; font-weight:700; color:#2e9e82; }
+
+/* Scroll area */
+.panel-scroll { flex:1; overflow-y:auto; }
+
+/* Section title */
+.st { font-size:10px; font-weight:700; color:#5a8a7a; letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px; }
+
+.section { padding:12px 15px; border-bottom:1px solid #f0f8f5; }
+
+/* Image slots */
+.img-slots { display:flex; gap:8px; }
+.img-slot { flex:1; aspect-ratio:1; border:2px dashed #d4ede7; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; position:relative; overflow:hidden; background:#fafffe; font-size:10px; color:#5a8a7a; gap:4px; transition:border-color .2s; }
+.img-slot.has-img { border-style:solid; border-color:#5ecfb0; background:#f0fdfb; }
+.img-slot img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.img-slot .slot-lbl { position:relative; z-index:1; background:rgba(255,255,255,.88); padding:1px 5px; border-radius:4px; font-size:9px; font-weight:600; color:#2e9e82; display:none; }
+.img-slot.has-img .slot-lbl { display:block; }
+.img-slot .plus { font-size:20px; color:#c8e0da; }
+.img-slot .rm-btn { position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%; background:rgba(220,50,50,.85); border:none; color:white; font-size:10px; cursor:pointer; display:none; align-items:center; justify-content:center; z-index:2; }
+.img-slot.has-img .rm-btn { display:flex; }
+
+/* Slider row */
+.slider-row { display:flex; align-items:center; gap:6px; margin-bottom:7px; }
+.slider-row label { font-size:11px; color:#5a8a7a; min-width:72px; flex-shrink:0; }
+.slider-row input[type=range] { flex:1; cursor:pointer; }
+.slider-row .val { font-size:11px; font-weight:700; min-width:40px; text-align:right; }
+
+/* Section label */
+.sub-label { font-size:10px; font-weight:600; color:#b0d0c8; margin-bottom:4px; margin-top:6px; }
+
+/* Toggle switch */
+.toggle-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding:8px 10px; background:#f0fdfb; border-radius:8px; border:1px solid #d4ede7; }
+.toggle-row span { font-size:12px; font-weight:600; color:#2e9e82; }
+.switch { width:40px; height:22px; border-radius:11px; background:#d4ede7; cursor:pointer; position:relative; transition:background .2s; flex-shrink:0; }
+.switch.on { background:#5ecfb0; }
+.switch::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:white; transition:left .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.switch.on::after { left:21px; }
+
+/* Mode selector */
+.mode-btns { display:flex; gap:6px; margin-bottom:10px; }
+.mode-btn { flex:1; padding:7px 4px; border:2px solid #d4ede7; border-radius:8px; background:#fafffe; cursor:pointer; font-size:11px; color:#888; line-height:1.3; transition:all .15s; }
+.mode-btn.active { border-color:#5ecfb0; background:#edfaf5; color:#2e9e82; font-weight:700; }
+
+/* Style toggles */
+.style-btns { display:flex; gap:6px; margin-bottom:10px; }
+.style-btn { flex:1; padding:5px; border:2px solid #d4ede7; border-radius:7px; background:#fafffe; cursor:pointer; font-size:11px; color:#888; transition:all .15s; }
+.style-btn.active { border-color:#5ecfb0; background:#edfaf5; color:#2e9e82; font-weight:700; }
+
+/* Align btns */
+.align-btns { display:flex; gap:6px; margin-bottom:8px; }
+.align-btn { flex:1; padding:5px; border:2px solid #d4ede7; border-radius:7px; background:#fafffe; cursor:pointer; font-size:10px; color:#888; transition:all .15s; }
+.align-btn.active { border-color:#5ecfb0; background:#edfaf5; color:#2e9e82; }
+
+/* Orient btns */
+.orient-btns { display:flex; gap:8px; }
+.orient-btn { flex:1; padding:10px 4px; border:2px solid #d4ede7; border-radius:8px; background:#fafffe; cursor:pointer; font-size:11px; color:#5a8a7a; display:flex; flex-direction:column; align-items:center; gap:3px; transition:all .15s; }
+.orient-btn.active { border-color:#5ecfb0; background:#edfaf5; color:#2e9e82; font-weight:700; }
+.orient-btn span { font-size:18px; }
+
+/* Color row */
+.color-row { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+.color-swatch { width:26px; height:26px; border-radius:6px; border:2px solid #d4ede7; overflow:hidden; position:relative; flex-shrink:0; }
+.color-swatch .swatch-bg { position:absolute; inset:0; pointer-events:none; }
+.color-swatch input[type=color] { position:absolute; inset:-4px; width:calc(100% + 8px); height:calc(100% + 8px); opacity:0; cursor:pointer; border:none; }
+
+/* Preset colors */
+.presets { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:14px; }
+.preset { width:24px; height:24px; border-radius:6px; cursor:pointer; border:2px solid transparent; transition:transform .15s; }
+.preset.active { outline:2px solid #5ecfb0; outline-offset:1px; border-color:#1a6a50; transform:scale(1.15); }
+
+/* Text input */
+.text-input { width:100%; padding:7px 10px; border:1px solid #d4ede7; border-radius:8px; font-size:13px; outline:none; }
+select { width:100%; padding:6px 8px; border:1px solid #d4ede7; border-radius:8px; font-size:12px; background:white; margin-bottom:9px; }
+
+/* Download area */
+.dl-area { padding:12px 15px; border-top:1px solid #d4ede7; display:flex; flex-direction:column; gap:8px; flex-shrink:0; }
+.btn-dl { width:100%; padding:11px; border:none; border-radius:10px; cursor:pointer; font-size:13px; font-weight:700; color:white; transition:background .3s; }
+.btn-green { background:linear-gradient(135deg,#5ecfb0,#2e9e82); }
+.btn-purple { background:linear-gradient(135deg,#7c3aed,#a855f7); }
+.btn-gray { background:#aaa; cursor:not-allowed; }
+.dl-note { font-size:10px; color:#aaccc4; text-align:center; line-height:1.5; }
+
+/* PREVIEW */
+#preview-area { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#cde0da; padding:20px; gap:12px; overflow:auto; }
+#preview-area canvas { display:block; box-shadow:0 16px 56px rgba(0,0,0,.28); border-radius:2px; }
+#preview-label { font-size:10px; color:#5a8a8a; letter-spacing:.05em; display:flex; gap:12px; align-items:center; }
+#history-count { color:#2e9e82; font-weight:600; display:none; }
+
+/* FULLSCREEN */
+#fullscreen { position:fixed; inset:0; z-index:9999; background:#111; display:none; flex-direction:column; align-items:center; justify-content:center; }
+#fullscreen.show { display:flex; }
+#fs-hint { position:absolute; top:14px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.7); color:white; font-size:12px; padding:6px 16px; border-radius:20px; white-space:nowrap; pointer-events:none; }
+#fs-img { max-width:100vw; max-height:100vh; object-fit:contain; }
+
+.hidden { display:none !important; }
+input[type=file] { display:none; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+</style>
+</head>
+<body>
+
+<!-- FULLSCREEN OVERLAY -->
+<div id="fullscreen">
+  <div id="fs-hint">📸 スクリーンショットで保存 ／ タップで閉じる</div>
+  <img id="fs-img" src="" alt="pattern">
+</div>
+
+<!-- LEFT PANEL -->
+<div id="panel">
+  <div class="panel-header">
+    <div>
+      <h1>🎨 パターンメーカー</h1>
+      <p>PNG 2枚＋テキストパターン対応</p>
+    </div>
+    <button id="undoBtn" onclick="undo()"><span>↩︎</span> 戻す</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('image',this)">🖼️ 画像</button>
+    <button class="tab" onclick="switchTab('text',this)">✏️ テキスト</button>
+    <button class="tab" onclick="switchTab('layout',this)">📄 レイアウト</button>
+  </div>
+
+  <div class="panel-scroll">
+
+    <!-- IMAGE TAB -->
+    <div id="tab-image" class="tab-content active">
+      <div class="section">
+        <div class="st">📂 画像（最大2枚）</div>
+        <div class="img-slots">
+          <div class="img-slot" id="slot0" onclick="slotClick(0)">
+            <span class="plus">＋</span><span>画像1</span>
+            <span class="slot-lbl">画像1</span>
+            <button class="rm-btn" onclick="removeImg(event,0)">×</button>
+          </div>
+          <div class="img-slot" id="slot1" onclick="slotClick(1)">
+            <span class="plus">＋</span><span>画像2</span>
+            <span class="slot-lbl">画像2</span>
+            <button class="rm-btn" onclick="removeImg(event,1)">×</button>
+          </div>
+        </div>
+        <input type="file" id="file0" accept="image/*" onchange="loadFile(0,this)">
+        <input type="file" id="file1" accept="image/*" onchange="loadFile(1,this)">
+      </div>
+
+      <div id="layer-controls"></div>
+    </div>
+
+    <!-- TEXT TAB -->
+    <div id="tab-text" class="tab-content">
+      <div class="section">
+        <div class="st">✏️ テキスト</div>
+        <div class="toggle-row">
+          <span>テキストを表示</span>
+          <div class="switch" id="textSwitch" onclick="toggleText()"></div>
+        </div>
+        <div id="text-settings" style="opacity:.4;pointer-events:none;">
+          <div class="mode-btns">
+            <button class="mode-btn active" id="modeOverlay" onclick="setTextMode('overlay')">📌 1か所に配置</button>
+            <button class="mode-btn" id="modePattern" onclick="setTextMode('pattern')">🔁 パターン化</button>
+          </div>
+
+          <div style="margin-bottom:9px;">
+            <div class="sub-label" style="margin-top:0;">テキスト内容</div>
+            <input class="text-input" id="textContent" value="テキスト"
+              oninput="textFieldChange('text', this.value)">
+          </div>
+
+          <div class="sub-label" style="margin-top:0;">フォント</div>
+          <select id="fontSel" onchange="push();textFieldChange('font', this.value)">
+            <option>sans-serif</option><option>serif</option><option>monospace</option>
+            <option>Georgia</option><option>Palatino</option><option>Arial Black</option>
+            <option>Impact</option><option>Trebuchet MS</option><option>Courier New</option>
+          </select>
+
+          <div class="color-row">
+            <span style="font-size:11px;color:#5a8a7a;min-width:60px;">文字の色</span>
+            <div class="color-swatch">
+              <div class="swatch-bg" id="textColorSwatch" style="background:#ffffff;"></div>
+              <input type="color" id="textColor" value="#ffffff"
+                oninput="push();textFieldChange('color',this.value);document.getElementById('textColorSwatch').style.background=this.value;document.getElementById('textColorVal').textContent=this.value;">
+            </div>
+            <span id="textColorVal" style="font-size:11px;font-weight:700;color:#7c3aed;">#ffffff</span>
+          </div>
+
+          <div class="style-btns">
+            <button class="style-btn active" id="btnBold"   onclick="textToggle('bold')">太字</button>
+            <button class="style-btn"        id="btnItalic" onclick="textToggle('italic')">斜体</button>
+            <button class="style-btn active" id="btnShadow" onclick="textToggle('shadow')">影</button>
+          </div>
+
+          <!-- OVERLAY settings -->
+          <div id="overlay-settings">
+            <div class="sub-label">文字サイズ・位置</div>
+            <div class="slider-row">
+              <label>文字サイズ</label>
+              <input type="range" min="12" max="200" value="60" style="accent-color:#7c3aed"
+                oninput="onSliderChange(event,'text',null,'size')">
+              <span class="val" style="color:#7c3aed;">60px</span>
+            </div>
+            <div class="align-btns">
+              <button class="align-btn active" data-align="left"   onclick="setAlign('left')">◀ 左</button>
+              <button class="align-btn"        data-align="center" onclick="setAlign('center')">◼ 中央</button>
+              <button class="align-btn"        data-align="right"  onclick="setAlign('right')">▶ 右</button>
+            </div>
+            <div class="slider-row">
+              <label>横位置</label>
+              <input type="range" min="0" max="100" value="50" style="accent-color:#7c3aed"
+                oninput="onSliderChange(event,'text',null,'x')">
+              <span class="val" style="color:#7c3aed;">50%</span>
+            </div>
+            <div class="slider-row">
+              <label>縦位置</label>
+              <input type="range" min="0" max="100" value="50" style="accent-color:#7c3aed"
+                oninput="onSliderChange(event,'text',null,'y')">
+              <span class="val" style="color:#7c3aed;">50%</span>
+            </div>
+            <div class="slider-row">
+              <label>不透明度</label>
+              <input type="range" min="10" max="100" value="90" style="accent-color:#7c3aed"
+                oninput="onSliderChange(event,'text',null,'overlayOpacity')">
+              <span class="val" style="color:#7c3aed;">90%</span>
+            </div>
+          </div>
+
+          <!-- PATTERN settings -->
+          <div id="pattern-settings" class="hidden">
+            <div class="sub-label">パターン設定</div>
+            <div class="slider-row">
+              <label>文字サイズ</label>
+              <input type="range" min="10" max="200" value="40" style="accent-color:#f472b6"
+                oninput="onSliderChange(event,'text',null,'patternSize')">
+              <span class="val" style="color:#f472b6;">40px</span>
+            </div>
+            <div class="slider-row">
+              <label>間隔 X</label>
+              <input type="range" min="-50" max="400" value="30" style="accent-color:#f472b6"
+                oninput="onSliderChange(event,'text',null,'patternGapX')">
+              <span class="val" style="color:#f472b6;">30px</span>
+            </div>
+            <div class="slider-row">
+              <label>間隔 Y</label>
+              <input type="range" min="-20" max="300" value="30" style="accent-color:#f472b6"
+                oninput="onSliderChange(event,'text',null,'patternGapY')">
+              <span class="val" style="color:#f472b6;">30px</span>
+            </div>
+            <div class="slider-row">
+              <label>オフセット角</label>
+              <input type="range" min="0" max="360" value="45" style="accent-color:#f472b6"
+                oninput="onSliderChange(event,'text',null,'patternAngle')">
+              <span class="val" style="color:#f472b6;">45°</span>
+            </div>
+            <div class="slider-row">
+              <label>文字の回転</label>
+              <input type="range" min="-180" max="180" value="0" style="accent-color:#f472b6"
+                oninput="onSliderChange(event,'text',null,'patternRotate')">
+              <span class="val" style="color:#f472b6;">0°</span>
+            </div>
+            <div class="slider-row">
+              <label>移動 X</label>
+              <input type="range" min="-300" max="300" value="0" style="accent-color:#f472b6"
+                oninput="onSliderChange(event,'text',null,'patternOffsetX')">
+              <span class="val" style="color:#f472b6;">0px</span>
+            </div>
+            <div class="slider-row">
+              <label>移動 Y</label>
+              <input type="range" min="-300" max="300" value="0" style="accent-color:#f472b6"
+                oninput="onSliderChange(event,'text',null,'patternOffsetY')">
+              <span class="val" style="color:#f472b6;">0px</span>
+            </div>
+            <div class="slider-row">
+              <label>不透明度</label>
+              <input type="range" min="10" max="100" value="90" style="accent-color:#f472b6"
+                oninput="onSliderChange(event,'text',null,'patternOpacity')">
+              <span class="val" style="color:#f472b6;">90%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAYOUT TAB -->
+    <div id="tab-layout" class="tab-content">
+      <div class="section">
+        <div class="st">🎨 背景色</div>
+        <div class="color-row">
+          <div class="color-swatch" style="width:30px;height:30px;border-radius:8px;">
+            <div class="swatch-bg" id="bgSwatch" style="background:#5ecfb0;"></div>
+            <input type="color" id="bgColor" value="#5ecfb0" oninput="setBg(this.value)">
+          </div>
+          <span id="bgColorVal" style="font-size:11px;font-weight:600;color:#2e9e82;">#5ecfb0</span>
+          <span style="font-size:10px;color:#aaccc4;">← タップで変更</span>
+        </div>
+        <div class="presets" id="presets"></div>
+        <div class="st">📄 向き</div>
+        <div class="orient-btns">
+          <button class="orient-btn active" id="btnPortrait" onclick="setOrientation('portrait',this)"><span>🗒️</span>縦 A4</button>
+          <button class="orient-btn" id="btnLandscape" onclick="setOrientation('landscape',this)"><span>🖼️</span>横 A4</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end scroll -->
+
+  <div class="dl-area">
+    <button class="btn-dl btn-green" id="dlBtn" onclick="download()">⬇️ PNG ダウンロード</button>
+    <button class="btn-dl btn-purple" onclick="openFullscreen()">📱 フルスクリーン表示</button>
+    <div class="dl-note">スマホ → フルスクリーン → スクリーンショット</div>
+  </div>
+</div>
+
+<!-- PREVIEW -->
+<div id="preview-area">
+  <canvas id="canvas"></canvas>
+  <div id="preview-label">
+    <span id="orientLabel">A4 縦 (210×297mm)</span>
+    <span id="history-count"></span>
+  </div>
+</div>
+
+<script src="images.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
